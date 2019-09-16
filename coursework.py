@@ -1,12 +1,13 @@
 import pygame
 import random
 import sys
-
+import math
 
 #/////////////////////////////////////////////////////////           COLOURS           \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 
 BLACK = (0,0,0)
+GREY = (75,75,75)
 WHITE = (255,255,255)
 BLUE =(50,50,255)
 YELLOW = (255,255,0)
@@ -66,7 +67,7 @@ class wall(pygame.sprite.Sprite):
     def __init__(self,xpos,ypos):
         super().__init__()
         self.image = pygame.Surface([50,50])
-        self.image.fill(YELLOW)
+        self.image.fill(GREY)
         self.rect = self.image.get_rect()
         self.rect.x = xpos*50
         self.rect.y = ypos*50
@@ -77,11 +78,11 @@ class wall(pygame.sprite.Sprite):
 class player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = pygame.image.load("playerMGLeft.png")
+        self.image = pygame.image.load("playerMG.png")
         self.direction = "null"
         self.rect = self.image.get_rect()
-        self.rect.x = 20
-        self.rect.y = 20
+        self.rect.x = 120
+        self.rect.y = 120
 
     def update(self,keyPressed):
         if keyPressed[pygame.K_a]:
@@ -101,7 +102,7 @@ class player(pygame.sprite.Sprite):
         return(self.direction)
 
     def equipWeapon(self,weapon,direction):
-        self.currentImage = "player"+str(weapon)+direction+".png"
+        self.currentImage = "player"+str(weapon)+".png"
         self.image = pygame.image.load(self.currentImage)
     
 class grenade(pygame.sprite.Sprite):
@@ -193,17 +194,17 @@ class smgBullet(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.image.fill(RED)
         if direction == "Left":
-            self.rect.x = playerX + 10
-            self.rect.y = playerY+ 10
+            self.rect.x = playerX + 5
+            self.rect.y = playerY+ 5
         if direction == "Right":
-            self.rect.x = playerX+ 50
-            self.rect.y = playerY+ 10
-        if direction == "Up":
             self.rect.x = playerX+ 25
-            self.rect.y = playerY + 10
+            self.rect.y = playerY+ 5
+        if direction == "Up":
+            self.rect.x = playerX+ 12
+            self.rect.y = playerY + 5
         if direction == "Down":
-            self.rect.x = playerX+ 10
-            self.rect.y = playerY+ 50
+            self.rect.x = playerX+ 5
+            self.rect.y = playerY+ 25
         self.direction = direction
         self.spread = random.randint(-2,2)
 
@@ -231,16 +232,16 @@ class shotgunBullet(pygame.sprite.Sprite):
         self.image.fill(RED)
         if direction == "Left":
             self.rect.x = playerX
-            self.rect.y = playerY+ 10
+            self.rect.y = playerY+ 5
         if direction == "Right":
-            self.rect.x = playerX+ 50
-            self.rect.y = playerY+ 10
+            self.rect.x = playerX+ 25
+            self.rect.y = playerY+ 5
         if direction == "Up":
-            self.rect.x = playerX+ 30
+            self.rect.x = playerX+ 15
             self.rect.y = playerY
         if direction == "Down":
-            self.rect.x = playerX+ 10
-            self.rect.y = playerY+ 50
+            self.rect.x = playerX+ 5
+            self.rect.y = playerY+ 25
         self.direction = direction
         self.spread = random.randint(-3,3)
 
@@ -268,10 +269,10 @@ class carbineBulletHorz(pygame.sprite.Sprite):
         self.image.fill(RED)
         if direction == "Left":
             self.rect.x = playerX
-            self.rect.y = playerY+ 10
+            self.rect.y = playerY+ 5
         if direction == "Right":
-            self.rect.x = playerX+ 50
-            self.rect.y = playerY+ 10
+            self.rect.x = playerX+ 25
+            self.rect.y = playerY+ 5
         self.direction = direction
 
     def update(self):
@@ -289,11 +290,11 @@ class carbineBulletVert(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.image.fill(RED)
         if direction == "Up":
-            self.rect.x = playerX+ 30
+            self.rect.x = playerX+ 15
             self.rect.y = playerY
         if direction == "Down":
-            self.rect.x = playerX+ 10
-            self.rect.y = playerY+ 50
+            self.rect.x = playerX+ 5
+            self.rect.y = playerY+ 25
         self.direction = direction
         
     def update(self):
@@ -349,11 +350,8 @@ while done == False:
             elif event.type == pygame.MOUSEBUTTONDOWN:
             #checks the mouse to see if the user has clicked on a button
                 mx, my = pygame.mouse.get_pos()
-                print(mx)
-                print(my)
         if mx > 267 and mx < 608 and my > 221 and my < 355:
             menu = False
-        print(menu)
         screen.blit(mainMenuIMG,(0,0))
     else:
         if spawnLevel == False:
@@ -381,6 +379,22 @@ while done == False:
                         weaponNo = 1
                     else:
                         weaponNo = weaponNo + 1
+        oldmx = mx
+        oldmy = my
+        mx, my = pygame.mouse.get_pos()
+        if oldmx != mx or oldmy != my:
+            if mx > player1.rect.x and my < player1.rect.y:
+                angle = math.atan((player1.rect.x - mx)/(player1.rect.y-my))
+                player1.image = pygame.transform.rotate("PlayerMG.png",angle)
+            elif mx > player1.rect.x and my > player1.rect.y:
+                math.atan((player1.rect.x - mx)/(player1.rect.y-my))
+                
+            elif mx < player1.rect.x and my < player1.rect.y:
+                math.atan((player1.rect.x - mx)/(player1.rect.y-my))
+                
+            elif mx < player1.rect.x and my > player1.rect.y:
+                math.atan((player1.rect.x - mx)/(player1.rect.y-my))
+                
         keyPressed = pygame.key.get_pressed()
         if keyPressed[pygame.K_w] or keyPressed[pygame.K_a] or keyPressed[pygame.K_s] or keyPressed[pygame.K_d]:
             playerGroup.update(keyPressed)
@@ -519,14 +533,14 @@ while done == False:
         #if level == 1:
            # screen.blit(lvl1IMG,(0,0))
         screen.fill(BLACK)
-        screen.blit(grenadeICON,(10,650))
-        screen.blit(myDisplayFont.render(str(grenadeCount),1,YELLOW),(50,650))
-        screen.blit(myDisplayFont.render(equippedWeapon,1,RED),(10,700))
+        allSpritesGroup.draw(screen)
         if ammoUsing > 10 or equippedWeapon == "STG":
             screen.blit(myDisplayFont.render(str(ammoUsing),1,GREEN),(100,700))
         else:
             screen.blit(myDisplayFont.render(str(ammoUsing),1,RED),(100,700))
-        allSpritesGroup.draw(screen)
+        screen.blit(grenadeICON,(10,650))
+        screen.blit(myDisplayFont.render(str(grenadeCount),1,YELLOW),(50,650))
+        screen.blit(myDisplayFont.render(equippedWeapon,1,RED),(10,700))
     pygame.display.flip()
     clock.tick(60)
 pygame.quit()
