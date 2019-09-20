@@ -78,7 +78,8 @@ class wall(pygame.sprite.Sprite):
 class player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = pygame.image.load("playerMG.png")
+        self.origImage = pygame.image.load("playerMG.png")
+        self.image = self.origImage
         self.direction = "null"
         self.rect = self.image.get_rect()
         self.rect.x = 120
@@ -104,7 +105,16 @@ class player(pygame.sprite.Sprite):
     def equipWeapon(self,weapon,direction):
         self.currentImage = "player"+str(weapon)+".png"
         self.image = pygame.image.load(self.currentImage)
-    
+
+    def rotate(self, angle):
+        self.rectx = self.rect.x
+        self.recty = self.rect.y
+        self.image = self.origImage
+        self.image = pygame.transform.rotate(self.image, angle)
+        self.rect = self.image.get_rect()
+        self.rect.y = self.recty
+        self.rect.x = self.rectx
+        
 class grenade(pygame.sprite.Sprite):
     def __init__(self,playerX,playerY,direction,explosion):
         super().__init__()
@@ -379,27 +389,38 @@ while done == False:
                         weaponNo = 1
                     else:
                         weaponNo = weaponNo + 1
-        oldmx = mx
-        oldmy = my
+
+        #rotating the player to look at mouse
         mx, my = pygame.mouse.get_pos()
-        if oldmx != mx or oldmy != my:
-            if mx > player1.rect.x and my < player1.rect.y:
-                angle = math.atan((player1.rect.x - mx)/(player1.rect.y-my))
-                player1.image = pygame.transform.rotate("PlayerMG.png",angle)
-            elif mx > player1.rect.x and my > player1.rect.y:
-                math.atan((player1.rect.x - mx)/(player1.rect.y-my))
-                
-            elif mx < player1.rect.x and my < player1.rect.y:
-                math.atan((player1.rect.x - mx)/(player1.rect.y-my))
-                
-            elif mx < player1.rect.x and my > player1.rect.y:
-                math.atan((player1.rect.x - mx)/(player1.rect.y-my))
-                
+        adjacent = (player1.rect.x+15-player1.rect.y+23)
+        opposite = (mx - player1.rect.y+23)
+        if adjacent != 0 and opposite != 0:
+            if adjacent  < 0:
+                adjacent = adjacent*-1
+            if opposite < 0:
+                opposite = opposite*-1
+            radAngle = math.atan(adjacent/opposite)
+            angle = int((radAngle/math.pi)*360)
+        else:
+            angle = 0
+        if mx > (player1.rect.x+15) and my < (player1.rect.y+23):
+            player1.rotate(270 + angle)
+        elif mx > (player1.rect.x+15) and my > (player1.rect.y+23):
+            player1.rotate(270-angle)
+        elif mx < (player1.rect.x+15) and my > (player1.rect.y+23):
+            player1.rotate(angle)
+        elif mx < (player1.rect.x+15) and my < (player1.rect.y+23):
+            player1.rotate(180 - angle)
+        print(int(angle))
+
+        #moving player
         keyPressed = pygame.key.get_pressed()
         if keyPressed[pygame.K_w] or keyPressed[pygame.K_a] or keyPressed[pygame.K_s] or keyPressed[pygame.K_d]:
             playerGroup.update(keyPressed)
             move == True
             direction = player1.getDirection()
+
+        #changing weapon
         if weaponNo == 1:
             equippedWeapon = "MG"
             ammoUsing = mgAmmo
@@ -412,6 +433,8 @@ while done == False:
         elif weaponNo == 4:
             equippedWeapon = "SMG"
             ammoUsing = smgAmmo
+
+        #shooting weapons
         if keyPressed[pygame.K_SPACE] and machinegunCooldown == False and equippedWeapon == "MG" and mgAmmo > 0:
             myBullet = machineGunBullet(player1.rect.x,player1.rect.y,direction)
             mgBulletGroup.add(myBullet)
@@ -436,11 +459,6 @@ while done == False:
             smgBulletGroup.add(mySmgBullet)
             smgCooldown = True
             smgAmmo = smgAmmo - 1
-        if keyPressed[pygame.K_g] and grenadeCooldown == False and grenadeCount > 0:
-            myGrenade = grenade(player1.rect.x,player1.rect.y,direction,pygame.image.load("explosion.png"))
-            grenadeGroup.add(myGrenade)
-            grenadeCooldown = True
-            grenadeCount = grenadeCount - 1
         if keyPressed[pygame.K_r]:
             if equippedWeapon ==  "MG":
                 mgAmmo = 30
@@ -474,6 +492,13 @@ while done == False:
                 smgTimer = 0
             else:
                 smgTimer = smgTimer + 1
+
+        #grenades
+        if keyPressed[pygame.K_g] and grenadeCooldown == False and grenadeCount > 0:
+            myGrenade = grenade(player1.rect.x,player1.rect.y,direction,pygame.image.load("explosion.png"))
+            grenadeGroup.add(myGrenade)
+            grenadeCooldown = True
+            grenadeCount = grenadeCount - 1
         if grenadeCooldown == True:
             if grenadeTimer == 30:
                 grenadeCooldown = False
@@ -491,16 +516,22 @@ while done == False:
             #gPickupCount = gPickupCount - 1
            # if grenadeCount < 5:
            # grenadeCount = grenadeCount + 1
+        
         if keyPressed[pygame.K_u]:
             myEnemy = enemy()
             enemyGroup.add(myEnemy)
-        player1.equipWeapon(equippedWeapon,direction)
+
+        #adding all bullets to one group
         bulletGroup.add(carbineBulletGroup)
         bulletGroup.add(shotgunBulletGroup)
         bulletGroup.add(smgBulletGroup)
         bulletGroup.add(mgBulletGroup)
+
+        #updating groups
         bulletGroup.update()
         grenadeGroup.update()
+
+        #checking collisions :  bullets & enemies
         if pygame.sprite.groupcollide(smgBulletGroup,enemyGroup,True,False):
             enemyGroup.update(10)
         if pygame.sprite.groupcollide(carbineBulletGroup,enemyGroup,True,False):
@@ -511,6 +542,8 @@ while done == False:
             enemyGroup.update(40)
         if pygame.sprite.groupcollide(grenadeGroup,enemyGroup,False,False):
             enemyGroup.update(80)
+
+        #checking collisions : player & walls
         if pygame.sprite.spritecollide(player1,wallGroup,False):
             if player1.direction == "Left":
                 player1.rect.x = player1.rect.x + 5
@@ -520,18 +553,27 @@ while done == False:
                 player1.rect.y = player1.rect.y + 5
             elif player1.direction == "Down":
                 player1.rect.y = player1.rect.y - 5
+
+        #checking collisions : bullets & walls
         pygame.sprite.groupcollide(wallGroup,bulletGroup,False,True)
+
+        #checking collisions : grenades & walls
         if pygame.sprite.groupcollide(grenadeGroup,wallGroup,False,False):
             for i in pygame.sprite.groupcollide(grenadeGroup,wallGroup,False,False):
                 i.xspeed = 0
                 i.yspeed = 0
+            
+        #sprite groups
         allSpritesGroup.add(enemyGroup)
         allSpritesGroup.add(grenadeGroup)
         allSpritesGroup.add(grenadePickupGroup)
         allSpritesGroup.add(bulletGroup)
         allSpritesGroup.add(wallGroup)
+        
         #if level == 1:
            # screen.blit(lvl1IMG,(0,0))
+
+        #drawing everything on screen
         screen.fill(BLACK)
         allSpritesGroup.draw(screen)
         if ammoUsing > 10 or equippedWeapon == "STG":
@@ -541,6 +583,9 @@ while done == False:
         screen.blit(grenadeICON,(10,650))
         screen.blit(myDisplayFont.render(str(grenadeCount),1,YELLOW),(50,650))
         screen.blit(myDisplayFont.render(equippedWeapon,1,RED),(10,700))
+        pygame.draw.line(screen, RED, (player1.rect.x+15,player1.rect.y+23), (mx,player1.rect.y+23), 2)
+        pygame.draw.line(screen, RED, (mx,player1.rect.y+23), (mx,my), 2)
+        
     pygame.display.flip()
     clock.tick(60)
 pygame.quit()
