@@ -56,9 +56,13 @@ spawnMenu = False
 spawnLevel = False
 mainMenuIMG = pygame.image.load("MainMenu.png")
 lvl1IMG = pygame.image.load("level1.png")
-level = 1
+room = 1
 mx = 0
 my = 0
+changeWeapon = False
+currentRoom = "room2,1.txt"
+roomVert = 2
+roomHorz = 1
 
 
 #/////////////////////////////////////////////////////////           CLASSES           \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -75,6 +79,18 @@ class wall(pygame.sprite.Sprite):
     def update(self):
         self.kil()
 
+class door(pygame.sprite.Sprite):
+    def __init__(self,xpos,ypos):
+        super().__init__()
+        self.image = pygame.Surface([50,50])
+        self.image.fill(YELLOW)
+        self.rect = self.image.get_rect()
+        self.rect.x = xpos*50  
+        self.rect.y = ypos*50
+
+    def update(self):
+        self.kil()
+
 class player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
@@ -84,20 +100,24 @@ class player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = 120
         self.rect.y = 120
+        self.xSpeed = 0
+        self.ySpeed = 0
 
     def update(self,keyPressed):
         if keyPressed[pygame.K_a]:
-            self.rect.x = self.rect.x - 5
-            self.direction = "Left"
-        if keyPressed[pygame.K_d]:
-            self.rect.x = self.rect.x +5
-            self.direction = "Right"
+            self.xSpeed  = -5
+        elif keyPressed[pygame.K_d]:
+            self.xSpeed = 5
+        else:
+            self.xSpeed = 0
         if keyPressed[pygame.K_w]:
-            self.rect.y = self.rect.y - 5
-            self.direction = "Up"
-        if keyPressed[pygame.K_s]:
-            self.rect.y = self.rect.y + 5
-            self.direction = "Down"
+            self.ySpeed  =-5
+        elif keyPressed[pygame.K_s]:
+            self.ySpeed = 5
+        else:
+            self.ySpeed = 0
+        self.rect.x = self.rect.x + self.xSpeed
+        self.rect.y = self.rect.y + self.ySpeed
 
     def getDirection(self):
         return(self.direction)
@@ -115,29 +135,22 @@ class player(pygame.sprite.Sprite):
         self.rect.x = self.rectx
         
 class grenade(pygame.sprite.Sprite):
-    def __init__(self,playerX,playerY,direction,explosion):
+    def __init__(self,playerX,playerY,xOffset,yOffset,explosion):
         super().__init__()
         self.image = pygame.image.load("grenade.png")
         self.explosionIMG = explosion
         self.rect = self.image.get_rect()
-        self.xspeed = 10
-        self.yspeed = 5
-        self.rect.x = playerX
-        self.rect.y = playerY
-        self.direction = direction
+        self.rect.x = playerX + 15
+        self.rect.y = playerY + 23
+        self.xSpeed = int(15*xOffset)
+        self.ySpeed = int(15*yOffset)
         self.timer = 75
 
     def update(self):
         self.timer = self.timer - 1
         if self.timer > 25:
-            if self.direction == "Left":
-                self.rect.x = self.rect.x - self.xspeed
-            elif self.direction == "Right":
-                self.rect.x = self.rect.x + self.xspeed
-            elif self.direction == "Up":
-                self.rect.y = self.rect.y - self.yspeed
-            elif self.direction == "Down":
-                self.rect.y = self.rect.y + self.yspeed
+            self.rect.x  = self.rect.x + self.xSpeed
+            self.rect.y = self.rect.y + self.ySpeed
             self.xpos = self.rect.x - 100
             self.ypos = self.rect.y - 90 
         elif self.timer < 25 and self.timer > 1:
@@ -160,118 +173,80 @@ class grenadePickup(pygame.sprite.Sprite):
         self.kill()
     
 class machineGunBullet(pygame.sprite.Sprite):
-    def __init__(self,playerX,playerY,direction):
-        super().__init__()
-        self.image = pygame.Surface([5,5])
-        self.rect = self.image.get_rect()
-        self.image.fill(RED)
-        self.rect.x = playerX + 15
-        self.rect.y = playerY + 23
-        self.direction = direction
-        self.spread = random.randint(-1,1)
-
-    def update(self):
-        if self.rect.x > -5 and self.direction == "Left":
-            self.rect.x = self.rect.x - 20
-            self.rect.y = self.rect.y + self.spread
-        elif self.rect.x < 1250 and self.direction == "Right":
-            self.rect.x = self.rect.x + 20
-            self.rect.y = self.rect.y + self.spread
-        elif self.rect.y > -5 and self.direction == "Up":
-            self.rect.y = self.rect.y - 20
-            self.rect.x = self.rect.x + self.spread
-        elif self.rect.y < 750 and self.direction == "Down":
-            self.rect.y = self.rect.y + 20
-            self.rect.x = self.rect.x + self.spread
-        else:
-            self.kill()
-
-class smgBullet(pygame.sprite.Sprite):
-    def __init__(self,playerX,playerY,direction):
+    def __init__(self,playerX,playerY,xOffset,yOffset):
         super().__init__()
         self.image = pygame.Surface([3,3])
         self.rect = self.image.get_rect()
         self.image.fill(RED)
         self.rect.x = playerX + 15
         self.rect.y = playerY + 23
-        self.direction = direction
-        self.spread = random.randint(-2,2)
+        self.xSpread = random.randint(-1,1)
+        self.ySpread = random.randint(-1,1)
+        self.xSpeed = int((50*xOffset) + self.xSpread)
+        self.ySpeed = int((50*yOffset) + self.ySpread)
 
     def update(self):
-        if self.rect.x > -5 and self.direction == "Left":
-            self.rect.x = self.rect.x - 15
-            self.rect.y = self.rect.y + self.spread
-        elif self.rect.x < 1250 and self.direction == "Right":
-            self.rect.x = self.rect.x + 15
-            self.rect.y = self.rect.y + self.spread
-        elif self.rect.y > -5 and self.direction == "Up":
-            self.rect.y = self.rect.y - 15
-            self.rect.x = self.rect.x + self.spread
-        elif self.rect.y < 750 and self.direction == "Down":
-            self.rect.y = self.rect.y + 15
-            self.rect.x = self.rect.x + self.spread
+        if self.rect.x < 905 and self.rect.x  > 0 and self.rect.y > 0 and self.rect.y < 755:
+            self.rect.x  = self.rect.x + self.xSpeed
+            self.rect.y = self.rect.y + self.ySpeed
+        else:
+            self.kill()
+
+class smgBullet(pygame.sprite.Sprite):
+    def __init__(self,playerX,playerY,xOffset,yOffset):
+        super().__init__()
+        self.image = pygame.Surface([2,2])
+        self.rect = self.image.get_rect()
+        self.image.fill(RED)
+        self.rect.x = playerX + 15
+        self.rect.y = playerY + 23
+        self.xSpread = random.randint(-2,2)
+        self.ySpread = random.randint(-2,2)
+        self.xSpeed = int((40*xOffset) + self.xSpread)
+        self.ySpeed = int((40*yOffset) + self.ySpread)
+
+    def update(self):
+        if self.rect.x < 905 and self.rect.x  > 0 and self.rect.y > 0 and self.rect.y < 755:
+            self.rect.x  = self.rect.x + self.xSpeed
+            self.rect.y = self.rect.y + self.ySpeed
         else:
             self.kill()
 
 class shotgunBullet(pygame.sprite.Sprite):
-    def __init__(self,playerX,playerY,direction):
+    def __init__(self,playerX,playerY,xOffset,yOffset):
         super().__init__()
         self.image = pygame.Surface([5,5])
         self.rect = self.image.get_rect()
         self.image.fill(RED)
         self.rect.x = playerX + 15
         self.rect.y = playerY + 23
-        self.direction = direction
-        self.spread = random.randint(-3,3)
+        self.xSpread = random.randint(-5,5)
+        self.ySpread = random.randint(-5,5)
+        self.xSpeed = int((35*xOffset) + self.xSpread)
+        self.ySpeed = int((35*yOffset) + self.ySpread)
 
     def update(self):
-        if self.rect.x > -5 and self.direction == "Left":
-            self.rect.x = self.rect.x - 10
-            self.rect.y = self.rect.y + self.spread
-        elif self.rect.x < 1250 and self.direction == "Right":
-            self.rect.x = self.rect.x + 10
-            self.rect.y = self.rect.y + self.spread
-        elif self.rect.y > -5 and self.direction == "Up":
-            self.rect.y = self.rect.y - 10
-            self.rect.x = self.rect.x + self.spread
-        elif self.rect.y < 750 and self.direction == "Down":
-            self.rect.y = self.rect.y + 10
-            self.rect.x = self.rect.x + self.spread
+        if self.rect.x < 905 and self.rect.x  > 0 and self.rect.y > 0 and self.rect.y < 755:
+            self.rect.x  = self.rect.x + self.xSpeed
+            self.rect.y = self.rect.y + self.ySpeed
         else:
             self.kill()
 
-class carbineBulletHorz(pygame.sprite.Sprite):
-    def __init__(self,playerX,playerY,direction):
+class carbineBullet(pygame.sprite.Sprite):
+    def __init__(self,playerX,playerY,xOffset,yOffset):
         super().__init__()
-        self.image = pygame.Surface([20,5])
+        self.image = pygame.Surface([10,10])
         self.rect = self.image.get_rect()
         self.image.fill(RED)
         self.rect.x = playerX + 15
         self.rect.y = playerY + 23
-        self.direction = direction
+        self.xSpeed = int(60*xOffset)
+        self.ySpeed = int(60*yOffset)
 
     def update(self):
-        if self.rect.x > -5 and self.direction == "Left":
-            self.rect.x = self.rect.x - 40
-        elif self.rect.x < 1250 and self.direction == "Right":
-            self.rect.x = self.rect.x + 40
-        else:
-            self.kill()
-
-class carbineBulletVert(pygame.sprite.Sprite):
-    def __init__(self,playerX,playerY,direction):
-        super().__init__()
-        self.image = pygame.Surface([5,20])
-        self.rect = self.image.get_rect()
-        self.image.fill(RED)
-
-        self.direction = direction
-        
-    def update(self):
-        if self.rect.y > -5 and self.direction == "Up":
-            self.rect.y = self.rect.y - 40
-        elif self.rect.y < 750 and self.direction == "Down":
-            self.rect.y = self.rect.y + 40
+        if self.rect.x < 905 and self.rect.x  > 0 and self.rect.y > 0 and self.rect.y < 755:
+            self.rect.x  = self.rect.x + self.xSpeed
+            self.rect.y = self.rect.y + self.ySpeed
         else:
             self.kill()
 
@@ -304,6 +279,7 @@ grenadeGroup = pygame.sprite.Group()
 grenadePickupGroup = pygame.sprite.Group()
 enemyGroup = pygame.sprite.Group()
 wallGroup = pygame.sprite.Group()
+doorGroup = pygame.sprite.Group()
 player1 = player()
 playerGroup.add(player1)
 allSpritesGroup.add(playerGroup)
@@ -317,18 +293,14 @@ while done == False:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 done = True
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-            #checks the mouse to see if the user has clicked on a button
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 mx, my = pygame.mouse.get_pos()
         if mx > 267 and mx < 608 and my > 221 and my < 355:
             menu = False
         screen.blit(mainMenuIMG,(0,0))
     else:
         if spawnLevel == False:
-            if level == 1:
-                f =open("level1.txt","r")
-            elif level == 2:
-                f = open("level2.txt","r")
+            f =open(currentRoom)
             yCounter = 0
             xCounter = 0
             for line in f:
@@ -336,16 +308,24 @@ while done == False:
                     if letter == "w":
                         myWall = wall(xCounter,yCounter)
                         wallGroup.add(myWall)
+                    elif letter == "d":
+                        myDoor = door(xCounter,yCounter)
+                        doorGroup.add(myDoor)
                     xCounter = xCounter + 1
                 xCounter = 0
                 yCounter = yCounter + 1
             spawnLevel = True
+            print("hi2")
+            
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 done = True
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_f:
+                    changeWeapon = True
         keyPressed = pygame.key.get_pressed()
         
-        #rotating the player to look at mouse
+        #Rotating the player to look at mouse
         mx, my = pygame.mouse.get_pos()
         opposite = (my-(player1.rect.y+23))
         adjacent = (mx - (player1.rect.x+15))
@@ -359,12 +339,6 @@ while done == False:
             angle = int((radAngle/(2*math.pi))*360)
         else:
             angle = 0
-
-        if keyPressed[pygame.K_o]:
-            print("angle = " + str(angle))
-            print("opposite = " + str(opposite))
-            print("adjacent = " + str(adjacent))
-        
         if mx > (player1.rect.x+15) and my < (player1.rect.y+23):
             player1.rotate(270+angle)
         elif mx > (player1.rect.x+15) and my > (player1.rect.y+23):
@@ -374,20 +348,14 @@ while done == False:
         elif mx < (player1.rect.x+15) and my < (player1.rect.y+23):
             player1.rotate(90-angle)
 
-        #moving player
-        if keyPressed[pygame.K_w] or keyPressed[pygame.K_a] or keyPressed[pygame.K_s] or keyPressed[pygame.K_d]:
-            playerGroup.update(keyPressed)
-            move == True
-            direction = player1.getDirection()
-
-        #changing weapon
-        if keyPressed[pygame.K_f]:
+        #Changing weapon
+        if changeWeapon == True:
             if weaponNo == 4:
                 weaponNo = 1
             else:
                 weaponNo = weaponNo + 1
             player1.equipWeapon(equippedWeapon)
-            
+            changeWeapon = False
         if weaponNo == 1:
             equippedWeapon = "MG"
             ammoUsing = mgAmmo
@@ -400,33 +368,54 @@ while done == False:
         elif weaponNo == 4:
             equippedWeapon = "SMG"
             ammoUsing = smgAmmo
+    
 
+        #Shooting & reloading weapons
+        if keyPressed[pygame.K_SPACE]:
+            run = (player1.rect.x+15) - mx
+            rise = (player1.rect.y + 23) - my
+            if run<0:
+                run = run*-1
+            if rise<0:
+                rise = rise*-1
 
-        #shooting & reloading weapons
-        if keyPressed[pygame.K_SPACE] and machinegunCooldown == False and equippedWeapon == "MG" and mgAmmo > 0:
-            myBullet = machineGunBullet(player1.rect.x,player1.rect.y,direction)
-            mgBulletGroup.add(myBullet)
-            machinegunCooldown = True
-            mgAmmo = mgAmmo - 1
-        if keyPressed[pygame.K_SPACE] and shotgunCooldown == False and equippedWeapon == "STG" and stgAmmo > 0:
-            for c in range(0,10):
-                myShotgunBullet = shotgunBullet(player1.rect.x,player1.rect.y,direction)
-                shotgunBulletGroup.add(myShotgunBullet)
-            shotgunCooldown = True
-            stgAmmo = stgAmmo - 1
-        if keyPressed[pygame.K_SPACE] and carbineCooldown == False and equippedWeapon == "CAR" and carAmmo > 0:
-            if direction == "Up" or direction == "Down":
-                myCarbineBullet = carbineBulletVert(player1.rect.x,player1.rect.y,direction)
-            elif direction == "Left" or direction == "Right":
-                myCarbineBullet = carbineBulletHorz(player1.rect.x,player1.rect.y,direction)
-            carbineBulletGroup.add(myCarbineBullet)
-            carbineCooldown = True
-            carAmmo = carAmmo - 1
-        if keyPressed[pygame.K_SPACE] and smgCooldown == False and equippedWeapon == "SMG" and smgAmmo > 0:
-            mySmgBullet = smgBullet(player1.rect.x,player1.rect.y,direction)
-            smgBulletGroup.add(mySmgBullet)
-            smgCooldown = True
-            smgAmmo = smgAmmo - 1
+            if mx > (player1.rect.x+15) and my < (player1.rect.y+23):
+                xDirection = 1
+                yDirection = -1
+            elif mx > (player1.rect.x+15) and my > (player1.rect.y+23):
+                xDirection = 1
+                yDirection = 1
+            elif mx < (player1.rect.x+15) and my > (player1.rect.y+23):
+                xDirection = -1
+                yDirection = 1
+            elif mx < (player1.rect.x+15) and my < (player1.rect.y+23):
+                xDirection = -1
+                yDirection = -1
+    
+            xOffset = (run/(rise+run))*xDirection
+            yOffset = (rise/(rise+run))*yDirection
+            
+            if machinegunCooldown == False and equippedWeapon == "MG" and mgAmmo > 0:
+                myBullet = machineGunBullet(player1.rect.x,player1.rect.y,xOffset,yOffset)
+                mgBulletGroup.add(myBullet)
+                machinegunCooldown = True
+                mgAmmo = mgAmmo - 1
+            if shotgunCooldown == False and equippedWeapon == "STG" and stgAmmo > 0:
+                for shot in range(0,5):
+                    myShotgunBullet = shotgunBullet(player1.rect.x,player1.rect.y,xOffset,yOffset)
+                    shotgunBulletGroup.add(myShotgunBullet)
+                shotgunCooldown = True
+                stgAmmo = stgAmmo - 1
+            if carbineCooldown == False and equippedWeapon == "CAR" and carAmmo > 0:
+                myCarbineBullet = carbineBullet(player1.rect.x,player1.rect.y,xOffset,yOffset)
+                carbineBulletGroup.add(myCarbineBullet)
+                carbineCooldown = True
+                carAmmo = carAmmo - 1
+            if smgCooldown == False and equippedWeapon == "SMG" and smgAmmo > 0:
+                mySmgBullet = smgBullet(player1.rect.x,player1.rect.y,xOffset,yOffset)
+                smgBulletGroup.add(mySmgBullet)
+                smgCooldown = True
+                smgAmmo = smgAmmo - 1
         if keyPressed[pygame.K_r]:
             if equippedWeapon ==  "MG":
                 mgAmmo = 30
@@ -462,9 +451,33 @@ while done == False:
             else:
                 smgTimer = smgTimer + 1
 
-        #grenades
+        #Grenades
         if keyPressed[pygame.K_g] and grenadeCooldown == False and grenadeCount > 0:
-            myGrenade = grenade(player1.rect.x,player1.rect.y,direction,pygame.image.load("explosion.png"))
+
+            run = (player1.rect.x+15) - mx
+            rise = (player1.rect.y + 23) - my
+            if run<0:
+                run = run*-1
+            if rise<0:
+                rise = rise*-1
+
+            if mx > (player1.rect.x+15) and my < (player1.rect.y+23):
+                xDirection = 1
+                yDirection = -1
+            elif mx > (player1.rect.x+15) and my > (player1.rect.y+23):
+                xDirection = 1
+                yDirection = 1
+            elif mx < (player1.rect.x+15) and my > (player1.rect.y+23):
+                xDirection = -1
+                yDirection = 1
+            elif mx < (player1.rect.x+15) and my < (player1.rect.y+23):
+                xDirection = -1
+                yDirection = -1
+    
+            xOffset = (run/(rise+run))*xDirection
+            yOffset = (rise/(rise+run))*yDirection
+            
+            myGrenade = grenade(player1.rect.x,player1.rect.y,xOffset,yOffset,pygame.image.load("explosion.png"))
             grenadeGroup.add(myGrenade)
             grenadeCooldown = True
             grenadeCount = grenadeCount - 1
@@ -490,17 +503,17 @@ while done == False:
             myEnemy = enemy()
             enemyGroup.add(myEnemy)
 
-        #adding all bullets to one group
+        #Adding all bullets to one group
         bulletGroup.add(carbineBulletGroup)
         bulletGroup.add(shotgunBulletGroup)
         bulletGroup.add(smgBulletGroup)
         bulletGroup.add(mgBulletGroup)
 
-        #updating groups
+        #Updating groups
         bulletGroup.update()
         grenadeGroup.update()
 
-        #checking collisions :  bullets & enemies
+        #Checking collisions :  bullets & enemies
         if pygame.sprite.groupcollide(smgBulletGroup,enemyGroup,True,False):
             enemyGroup.update(10)
         if pygame.sprite.groupcollide(carbineBulletGroup,enemyGroup,True,False):
@@ -512,39 +525,63 @@ while done == False:
         if pygame.sprite.groupcollide(grenadeGroup,enemyGroup,False,False):
             enemyGroup.update(80)
 
-        #checking collisions : player & walls
-        if pygame.sprite.spritecollide(player1,wallGroup,False):
-            if player1.direction == "Left":
-                player1.rect.x = player1.rect.x + 5
-            elif player1.direction == "Right":
-                player1.rect.x = player1.rect.x - 5
-            elif player1.direction == "Up":
-                player1.rect.y = player1.rect.y + 5
-            elif player1.direction == "Down":
-                player1.rect.y = player1.rect.y - 5
+        #Moving player
+        if keyPressed[pygame.K_w] or keyPressed[pygame.K_a] or keyPressed[pygame.K_s] or keyPressed[pygame.K_d]:
+            playerGroup.update(keyPressed)
+            move == True
+            direction = player1.getDirection()
 
-        #checking collisions : bullets & walls
+        if pygame.sprite.spritecollide(player1,doorGroup,False) and keyPressed[pygame.K_e]:
+            print(player1.rect.x)
+            if player1.rect.x > 800:
+                roomHorz = roomHorz + 1
+                player1.rect.x = player1.rect.x - 700
+                print("hi")
+            elif player1.rect.x < 150:
+                roomHorz = roomHorz - 1
+                player1.rect.x = player1.rect.x + 700
+            if player1.rect.y < 100:
+                roomVert = roomVert - 1
+                player1.rect.y = player1.rect.y + 500
+            elif player1.rect.y > 650:
+                roomVert = roomVert + 1
+                player1.rect.y = player1.rect.y - 500
+            currentRoom =  "room"+str(roomVert)+","+str(roomHorz)+".txt"
+            spawnLevel = False
+            print(currentRoom)
+            
+        #Checking collisions : player & walls
+        if pygame.sprite.spritecollide(player1,wallGroup,False) or pygame.sprite.spritecollide(player1,doorGroup,False):
+            if player1.xSpeed == 5:
+                player1.rect.x = player1.rect.x - 5
+            if player1.xSpeed == -5:
+                player1.rect.x = player1.rect.x + 5
+            if player1.ySpeed == 5:
+                player1.rect.y = player1.rect.y - 5
+            if player1.ySpeed == -5:
+                player1.rect.y = player1.rect.y +  5
+
+        #Checking collisions : bullets & walls
         pygame.sprite.groupcollide(wallGroup,bulletGroup,False,True)
 
-        #checking collisions : grenades & walls
+        #Checking collisions : grenades & walls
         if pygame.sprite.groupcollide(grenadeGroup,wallGroup,False,False):
             for i in pygame.sprite.groupcollide(grenadeGroup,wallGroup,False,False):
-                i.xspeed = 0
-                i.yspeed = 0
+                i.xSpeed = 0
+                i.ySpeed = 0
             
-        #sprite groups
+        #Sprite groups
         allSpritesGroup.add(enemyGroup)
         allSpritesGroup.add(grenadeGroup)
         allSpritesGroup.add(grenadePickupGroup)
         allSpritesGroup.add(bulletGroup)
         allSpritesGroup.add(wallGroup)
-        
-        #if level == 1:
-           # screen.blit(lvl1IMG,(0,0))
+        allSpritesGroup.add(doorGroup)
 
-        #drawing everything on screen
+        #Drawing everything on screen
         screen.fill(BLACK)
         allSpritesGroup.draw(screen)
+        shotgunBulletGroup.draw(screen)
         if ammoUsing > 10 or equippedWeapon == "STG":
             screen.blit(myDisplayFont.render(str(ammoUsing),1,GREEN),(100,700))
         else:
