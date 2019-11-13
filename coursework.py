@@ -157,6 +157,7 @@ class grenade(pygame.sprite.Sprite):
         self.xSpeed = int(15*xOffset)
         self.ySpeed = int(15*yOffset)
         self.timer = 75
+        self.name = "boomBoi"
 
     def update(self):
         self.timer = self.timer - 1
@@ -165,16 +166,19 @@ class grenade(pygame.sprite.Sprite):
             self.rect.y = self.rect.y + self.ySpeed
             self.xpos = self.rect.x - 100
             self.ypos = self.rect.y - 90 
-        elif self.timer < 25 and self.timer > 1:
+        elif self.timer == 25:
             self.kill()
             explosionGroup.add(self)
             self.image = self.explosionIMG
             self.rect = self.image.get_rect()
             self.rect.x = self.xpos
             self.rect.y = self.ypos
-        elif self.timer == 0:
+            self.timer  = self.timer -1
+        elif self.timer < 25 and self.timer > 0:
+            self.timer = self.timer -1
+        elif self.timer <= 0:
             self.kill()
-
+            
 class grenadePickup(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
@@ -249,7 +253,7 @@ class shotgunBullet(pygame.sprite.Sprite):
 class carbineBullet(pygame.sprite.Sprite):
     def __init__(self,playerX,playerY,xOffset,yOffset):
         super().__init__()
-        self.image = pygame.Surface([10,10])
+        self.image = pygame.Surface([6,6])
         self.rect = self.image.get_rect()
         self.image.fill(YELLOW)
         self.rect.x = playerX + 15
@@ -274,10 +278,12 @@ class turret(pygame.sprite.Sprite):
         self.rect.x = xPos*50  
         self.rect.y = yPos*50
         self.shotCooldown = 10
-        self.deathTimer = 100
+        self.deathTimer = 20
         self.setExplode = False
+        self.alreadyExplode = False
+        self.name = "turretMan"
 
-    def update(self,damage,playerX,playerY):
+    def update(self,playerX,playerY):
         if self.health > 0:
             run = playerX - self.rect.x
             rise = playerY - self.rect.y
@@ -303,14 +309,8 @@ class turret(pygame.sprite.Sprite):
             yOffset = (rise/(rise+run))*yDirection
             potentialX = (self.rect.x + xOffset) 
             potentialY = (self.rect.y + yOffset) 
-            projectionDone = "False"
-            while projectionDone == "False":
-                projection = enemyProjection(potentialX,potentialY)
-                projectionDone = projection.update()
-                potentialX = potentialX + xOffset
-                potentialY = potentialY + yOffset
-            myFinalProj = finalProjection(potentialX,potentialY)
-            if pygame.sprite.collide_rect(player1,myFinalProj):
+
+            if sight == False:
                 if adjacent != 0 and opposite != 0:
                     if adjacent  < 0:
                         adjacent = adjacent*-1
@@ -351,21 +351,24 @@ class turret(pygame.sprite.Sprite):
                 self.rect.x = origX - 15
                 self.rect.y = origY - 10
                 self.setExplode = True
-
+            elif self.setExplode == True and self.deathTimer >0:
+                self.deathTimer = self.deathTimer - 1
+            else:
+                self.kill()
+        
     def tickExplosion(self):
         if self.deathTimer > 0:
             self.deathTimer = self.deathTimer - 1
         else:
             self.kill()
 
-    def damage(self,damage,alreadyExplode):
+    def damage(self,damage):
         self.health = self.health - damage
-        self.alreadyExplode = alreadyExplode
         
-class enemyProjection(pygame.sprite.Sprite):
-    def __init__(self,potentialX,potentialY):
+class projection(pygame.sprite.Sprite):
+    def __init__(self,potentialX,potentialY,width,height):
         super().__init__()
-        self.image = pygame.Surface([1,1])
+        self.image = pygame.Surface([width,height])
         self.image.fill(GREEN)
         self.rect = self.image.get_rect()
         self.rect.x = potentialX
@@ -663,21 +666,22 @@ while done == False:
         bulletGroup.update()
         grenadeGroup.update()
 
-        turretGroup.update(0,(player1.rect.x),(player1.rect.y+23))
+        turretGroup.update((player1.rect.x),(player1.rect.y+23))
         enemyGroup.add(turretGroup)
         
         for e in enemyGroup:
             if pygame.sprite.spritecollide(e,mgBulletGroup,True):
-                e.damage(20,0)
+                e.damage(20)
             if pygame.sprite.spritecollide(e,carbineBulletGroup,True):
-                e.damage(25,0)
+                e.damage(35)
             if pygame.sprite.spritecollide(e,shotgunBulletGroup,True):
-                e.damage(20,0)
+                e.damage(20)
             if pygame.sprite.spritecollide(e,smgBulletGroup,True):
-                e.damage(15,0)
+                e.damage(15)
             if pygame.sprite.spritecollide(e,explosionGroup,False):
                 if e.alreadyExplode == False:
-                    e.damage(50,True)
+                    e.damage(75)
+                    e.alreadyExplode = True
         
         #Moving player
         if keyPressed[pygame.K_w] or keyPressed[pygame.K_a] or keyPressed[pygame.K_s] or keyPressed[pygame.K_d]:
@@ -703,7 +707,6 @@ while done == False:
                 player1.rect.y = player1.rect.y - 610
             currentRoom =  "room"+str(roomVert)+","+str(roomHorz)+".txt"
             spawnLevel = False
-            print(currentRoom)
             
         #Checking collisions : player & walls
         if pygame.sprite.spritecollide(player1,wallGroup,False):
@@ -722,13 +725,22 @@ while done == False:
         #Checking collisions : grenades & walls
         if pygame.sprite.groupcollide(grenadeGroup,wallGroup,False,False):
             for i in pygame.sprite.groupcollide(grenadeGroup,wallGroup,False,False):
-                i.xspeed = 0
-                i.yspeed = 0
+                gHorzProjection = projection(i.rect.x+10,i.rect.y-i.ySpeed,5,5)
+                gVertProjection = projection(i.rect.x-i.xSpeed,i.rect.y+10,5,5)
+                if pygame.sprite.spritecollide(gHorzProjection,wallGroup,False):
+                    i.xSpeed = i.xSpeed*-1
+                if pygame.sprite.spritecollide(gVertProjection,wallGroup,False):
+                    i.ySpeed = i.ySpeed*-1
 
         if pygame.sprite.spritecollide(player1,enemyBulletGroup,True):
             player1.health = player1.health - 10
             
         #Sprite groups
+        for w in explosionGroup:
+            if w.name == "boomBoi":
+                w.update()
+            elif w.name == "turretMan":
+                w.update(0,0)
         allSpritesGroup.add(explosionGroup)
         allSpritesGroup.add(enemyGroup)
         allSpritesGroup.add(enemyBulletGroup)
