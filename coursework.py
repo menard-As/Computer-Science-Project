@@ -60,7 +60,7 @@ room = 1
 mx = 0
 my = 0
 changeWeapon = False
-currentRoom = "room2,1.txt"
+currentRoom = "room3,5.txt"
 roomVert = 2
 roomHorz = 1
 moved = 50
@@ -68,6 +68,7 @@ shotted =  10
 looked = 50
 changedGun = 4
 usedItem = 2
+spawnBoss = False
 
 
 #/////////////////////////////////////////////////////////           CLASSES           \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -479,7 +480,204 @@ class turret(pygame.sprite.Sprite):
 
     def damage(self,damage):
         self.health = self.health - damage
+
+class boss(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.origImage = pygame.image.load("boss.png")
+        self.image = self.origImage
+        self.rect = self.image.get_rect()
+        self.rect.x = 350
+        self.rect.y = 300
+        self.health = 5000
+        self.oldHealth = 5000
+        self.attackTimer = 0
+        self.attackDone = True
+        self.laserOn = False
+        self.laserCount = 0
+        self.laserTime = 0
+        self.vibeCheck = 90
+        self.originalVibe = 90
+        self.vibration = 5
+        self.vibe = 1
+
+    def damage(self,damage):
+        self.health = self.health - damage
+
+    def update(self,playerX,playerY):
+        if self.health < 0:
+            self.kill()
+        if self.attackTimer == 0:
+            self.attackNo = 2
+            self.attackDone = False
+            self.attackTimer = 50
+        elif self.attackTimer > 0 and self.attackDone == True:
+            self.attackTimer = self.attackTimer - 1
+        if self.attackNo == 1 and self.attackDone == False:
+            for c in range (0,10):
+                myBullet = shotgunBullet(self.rect.x+100,self.rect.y+100,0.2,0.2)
+                turretBulletGroup.add(myBullet)
+            for c in range (0,10):
+                myBullet = shotgunBullet(self.rect.x+100,self.rect.y+100,-0.2,0.2)
+                turretBulletGroup.add(myBullet)
+            for c in range (0,10):
+                myBullet = shotgunBullet(self.rect.x+100,self.rect.y+100,-0.2,-0.2)
+                turretBulletGroup.add(myBullet)
+            for c in range (0,10):
+                myBullet = shotgunBullet(self.rect.x+100,self.rect.y+100,0.2,-0.2)
+                turretBulletGroup.add(myBullet)
+            for c in range (0,10):
+                myBullet = shotgunBullet(self.rect.x+100,self.rect.y+100,0.2,0)
+                turretBulletGroup.add(myBullet)
+            for c in range (0,10):
+                myBullet = shotgunBullet(self.rect.x+100,self.rect.y+100,0,0.2)
+                turretBulletGroup.add(myBullet)
+            for c in range (0,10):
+                myBullet = shotgunBullet(self.rect.x+100,self.rect.y+100,-0.2,0)
+                turretBulletGroup.add(myBullet)
+            for c in range (0,10):
+                myBullet = shotgunBullet(self.rect.x+100,self.rect.y+100,0,-0.2)
+                turretBulletGroup.add(myBullet)
+            self.attackDone = True
+        elif self.attackNo == 2 and self.attackDone == False:
+            if self.health < 2000:
+                self.laserCount = 3
+            elif self.health < 3500:
+                self.laserCount = 2
+            else:
+                self.laserCount = 1
+            self.laserTime = self.attackTimer*0.9
+            self.laserWindUp = self.laserTime*0.6
+            self.laserOn = True
+            self.attackDone = True
+            self.playerPositionFound = False
+        elif self.attackNo == 3 and self.attackDone == False:
+            X = -1
+            Y = 1
+            while X < 1 and Y > -1:
+                myBullet = carbineBullet(self.rect.x,self.rect.y,X,Y)
+                turretBulletGroup.add(myBullet)
+                X = X + 0.1
+                Y = Y - 0.1
+            self.attackDone = True
+
+        #print('health' + str(self.health))
+        #print('oldhealth' + str(self.oldHealth))
+        if self.health < 1000 and self.oldHealth >= 1000:
+            self.virbation =  15
+            self.originalVibe = 10
+            oldX = self.rect.x
+            oldY = self.rect.y
+            self.image = pygame.image.load("boss4.png")
+            self.rect = self.image.get_rect()
+            self.rect.x = oldX
+            self.rect.y = oldY
+        elif self.health < 2000 and self.oldHealth >= 2000:
+            self.virbation =  10
+            self.originalVibe = 30
+            oldX = self.rect.x
+            oldY = self.rect.y
+            self.image = pygame.image.load("boss3.png")
+            self.rect = self.image.get_rect()
+            self.rect.x = oldX
+            self.rect.y = oldY
+        elif self.health < 3000 and self.oldHealth >= 3000:
+            self.virbation = 10
+            self.originalVibe = 50
+            oldX = self.rect.x
+            oldY = self.rect.y
+            self.image = pygame.image.load("boss2.png")
+            self.rect = self.image.get_rect()
+            self.rect.x = oldX
+            self.rect.y = oldY
+        elif self.health < 4000 and self.oldHealth >= 4000:
+            self.virbation =  5
+            self.originalVibe = 70
+            oldX = self.rect.x
+            oldY = self.rect.y
+            self.image = pygame.image.load("boss1.png")
+            self.rect = self.image.get_rect()
+            self.rect.x = oldX
+            self.rect.y = oldY
+    
+        self.oldHealth = self.health
+
         
+        if self.laserOn == True:
+            if self.playerPositionFound == False:
+                run = (self.rect.x + 100) - playerX
+                rise = (self.rect.y + 100) - playerY
+                if run<0:
+                    run = run*-1
+                if rise<0:
+                    rise = rise*-1
+                if self.rect.x >= playerX and self.rect.y <= playerY:
+                    xDirection = -1
+                    yDirection = 1
+                elif self.rect.x >= playerX and self.rect.y >= playerY:
+                    xDirection = -1
+                    yDirection = -1
+                elif self.rect.x <= playerX and self.rect.y >= playerY:
+                    xDirection = 1
+                    yDirection = -1
+                elif self.rect.x <= playerX and self.rect.y <= playerY:
+                    xDirection = 1
+                    yDirection = 1
+                self.xOffset = (run/(rise+run))*xDirection
+                self.yOffset = (rise/(rise+run))*yDirection
+                self.playerPositionFound = True
+            if self.laserTime < self.laserWindUp:
+                myLaser = laser(self.rect.x+90,self.rect.y+90,self.xOffset,self.yOffset)
+                laserGroup.add(myLaser)
+            else:
+                myLaser = targetLaser(self.rect.x+95,self.rect.y+95,self.xOffset,self.yOffset)
+                laserGroup.add(myLaser)
+            self.laserTime = self.laserTime - 1
+            if self.laserTime == 0:
+                self.laserOn = False
+
+        if self.vibeCheck == 0:
+            self.rect.x = self.rect.x + (self.vibe*self.vibration)
+            self.rect.y = self.rect.y + (self.vibe*self.vibration)
+            self.vibe = self.vibe*-1
+            self.vibeCheck = self.originalVibe
+        else:
+            self.vibeCheck = self.vibeCheck - 1
+            
+
+class laser(pygame.sprite.Sprite):
+    def __init__(self,X,Y,xOffset,yOffset):
+        super().__init__()
+        self.image = pygame.Surface([50,50])
+        self.rect = self.image.get_rect()
+        self.image.fill(RED)
+        self.rect.x = X
+        self.rect.y = Y
+        self.xSpeed = int(60*xOffset)
+        self.ySpeed = int(60*yOffset)
+        self.name = "lsrS"
+
+    def update(self):
+        self.rect.x = self.rect.x + self.xSpeed
+        self.rect.y = self.rect.y + self.ySpeed
+
+
+class targetLaser(pygame.sprite.Sprite):
+    def __init__(self,X,Y,xOffset,yOffset):
+        super().__init__()
+        self.image = pygame.Surface([5,5])
+        self.rect = self.image.get_rect()
+        self.image.fill(GREEN)
+        self.rect.x = X
+        self.rect.y = Y
+        self.xSpeed = int(30*xOffset)
+        self.ySpeed = int(30*yOffset)
+        self.name = "lsrW"
+
+    def update(self):
+        self.rect.x = self.rect.x + self.xSpeed
+        self.rect.y = self.rect.y + self.ySpeed
+
 class projection(pygame.sprite.Sprite):
     def __init__(self,X,Y,xSpeed,ySpeed):
         super().__init__()
@@ -515,6 +713,7 @@ heavyTurretBulletGroup = pygame.sprite.Group()
 turretBulletGroup = pygame.sprite.Group()
 allButEnemyGroup = pygame.sprite.Group()
 explosionGroup = pygame.sprite.Group()
+laserGroup = pygame.sprite.Group()
 
 player1 = player()
 playerGroup.add(player1)
@@ -749,6 +948,15 @@ while done == False:
                 grenadeTimer = grenadeTimer + 1
 
 
+        #SpawnBoss
+        if currentRoom == 'room3,5.txt':
+            if spawnBoss == False:
+                myBoss = boss()
+                allSpritesGroup.add(myBoss)
+                spawnBoss = True
+
+        myBoss.update(player1.rect.x+23,player1.rect.y+23)
+        
         #Adding all bullets to one group
         bulletGroup.add(heavyTurretBulletGroup)
         bulletGroup.add(turretBulletGroup)
@@ -756,11 +964,12 @@ while done == False:
         bulletGroup.add(shotgunBulletGroup)
         bulletGroup.add(smgBulletGroup)
         bulletGroup.add(mgBulletGroup)
-
+        
         #Updating groups
+        laserGroup.update()
         bulletGroup.update()
         grenadeGroup.update()
-        turretGroup.update((player1.rect.x+23),(player1.rect.y+23))
+        turretGroup.update((player1.rect.x),(player1.rect.y))
         enemyGroup.add(turretGroup)
         
         for e in enemyGroup:
@@ -785,6 +994,7 @@ while done == False:
             move == True
             direction = player1.getDirection()
 
+        #Checking collisions : player and door
         if pygame.sprite.spritecollide(player1,doorGroup,False) and keyPressed[pygame.K_e]:
             if player1.rect.x > 800:
                 roomHorz = roomHorz + 1
@@ -815,6 +1025,23 @@ while done == False:
         #Checking collisions : bullets & walls
         pygame.sprite.groupcollide(wallGroup,bulletGroup,False,True)
 
+        #checking collisiosns : boss
+        if pygame.sprite.spritecollide(myBoss,mgBulletGroup,True):
+            myBoss.damage(20)
+        if pygame.sprite.spritecollide(myBoss,carbineBulletGroup,True):
+            myBoss.damage(35)
+        if pygame.sprite.spritecollide(myBoss,shotgunBulletGroup,True):
+            myBoss.damage(20)
+        if pygame.sprite.spritecollide(myBoss,smgBulletGroup,True):
+            myBoss.damage(15)
+        
+        #checking collisions : laser 
+        pygame.sprite.groupcollide(wallGroup,laserGroup,False,True)
+        if pygame.sprite.spritecollide(player1,laserGroup,False):
+            for e in pygame.sprite.spritecollide(player1,laserGroup,False):
+                if e.name == 'lsrS':
+                    player1.health = player1.health-1
+        
         #Checking collisions : grenades & walls
         if pygame.sprite.groupcollide(grenadeGroup,wallGroup,False,False):
             for i in pygame.sprite.groupcollide(grenadeGroup,wallGroup,False,False):
@@ -837,6 +1064,8 @@ while done == False:
                 w.update()
             elif w.name == "turretMan":
                 w.update(0,0)
+
+        allSpritesGroup.add(laserGroup)
         allSpritesGroup.add(explosionGroup)
         allSpritesGroup.add(turretBulletGroup)
         allSpritesGroup.add(enemyGroup)
@@ -858,6 +1087,7 @@ while done == False:
         screen.fill(BLACK)
         allSpritesGroup.draw(screen)
         if currentRoom == "room2,1.txt":
+            spawnBoss = False
             if moved > 0 and shotted > 0 and looked > 0 and changedGun > 0 and usedItem > 0:
                 screen.blit(myDisplayFont.render("Move with the",1,RED),(330,80))
                 screen.blit(pygame.image.load("moveKeys.png"),(565,60))
@@ -882,6 +1112,12 @@ while done == False:
                 screen.blit(pygame.image.load("useItem.png"),(400,60))
                 screen.blit(myDisplayFont.render("Item Type + Count",1,RED),(200,650))
                 screen.blit(pygame.image.load("arrowLeft.png"),(100,660))
+            else:
+                screen.blit(myDisplayFont.render("You are ready, to go through the",1,RED),(290,80))
+                screen.blit(myDisplayFont.render("door get close to it and press",1,RED),(290,120))
+        elif currentRoom == "room3,5.txt":
+            screen.blit(myDisplayFont.render("Boss Health : " + str(myBoss.health),1,RED),(300,50))
+            
         if ammoUsing > 10 or equippedWeapon == "STG":
             screen.blit(myDisplayFont.render(str(ammoUsing),1,GREEN),(100,700))
         else:
